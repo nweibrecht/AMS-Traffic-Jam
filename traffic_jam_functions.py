@@ -23,8 +23,6 @@ def evolve2d(cellular_automaton, timesteps, apply_rule, r=1):
         for row, cell_row in enumerate(cell_layer):
             for col, cell in enumerate(cell_row):
                 n = get_neighbourhood(cell_layer, row, col)
-                if t==2:
-                    print(n)
                 array[t][row][col] = apply_rule(n, (row, col), t)
     return array
 
@@ -41,7 +39,7 @@ def traffic_jam_rule(neighborhood, c, t):
     if row == 0:
         row_index_of_lane = 0
     else:
-        row_index_of_lane = 1
+        row_index_of_lane = 1 # the normal row is in the middle of the neighbor rows
     curr_lane = neighborhood[row_index_of_lane, :]  # lane of the considered cell
     index_of_current_cell = col if col <= radius else radius  # index of current cell within neighborhood
     important_cells = list(curr_lane[:index_of_current_cell + 2])  # cells until one after current cell
@@ -67,7 +65,7 @@ def traffic_jam_rule(neighborhood, c, t):
         cells_to_consider = curr_lane[index_in_correct_order + 1:]
         # To define new value, consider the cells ahead
         try:
-            gap_size = list(cells_to_consider[:,0]).index(next(v[0] for v in cells_to_consider if v[0] != -1))
+            gap_size = list(cells_to_consider[:,0]).index(next(v[0] for v in cells_to_consider if int(v[0]) != -1))
             # Gap size is the space until the next cell with a car in it
         except StopIteration:
             gap_size = max_model_speed + 1
@@ -110,5 +108,8 @@ def plot2d_animate(ca, title=''):
             i['index'] = 0
         im.set_array(ca[i['index']])
         return im,
-    ani = animation.FuncAnimation(fig, updatefig, interval=2000, blit=True)
+    ani = animation.FuncAnimation(fig, updatefig, interval=10, blit=True)
     plt.show()
+    for i in range(len(ca)):
+        plt.imshow(ca[i])
+        plt.savefig(f'./resources/{i}.png')
