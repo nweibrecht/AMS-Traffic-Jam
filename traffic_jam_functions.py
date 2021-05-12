@@ -9,6 +9,7 @@ def evolve2d(cellular_automaton, timesteps, apply_rule, r=1):
     rows, cols, _ = cellular_automaton.shape
     array = np.zeros((timesteps, rows, cols, 2), dtype=cellular_automaton.dtype)
     array[0] = cellular_automaton
+    print(array[0])
     def get_neighbourhood(cell_layer, row, col):
         # Neighborhood of traffic jam:
         col_indices = range(col - r, col + r + 1)
@@ -22,6 +23,8 @@ def evolve2d(cellular_automaton, timesteps, apply_rule, r=1):
         for row, cell_row in enumerate(cell_layer):
             for col, cell in enumerate(cell_row):
                 n = get_neighbourhood(cell_layer, row, col)
+                if t==2:
+                    print(n)
                 array[t][row][col] = apply_rule(n, (row, col), t)
     return array
 
@@ -40,7 +43,6 @@ def traffic_jam_rule(neighborhood, c, t):
     else:
         row_index_of_lane = 1
     curr_lane = neighborhood[row_index_of_lane, :]  # lane of the considered cell
-
     index_of_current_cell = col if col <= radius else radius  # index of current cell within neighborhood
     important_cells = list(curr_lane[:index_of_current_cell + 2])  # cells until one after current cell
     one_after_current_cell = important_cells.pop()  # value after the current cell
@@ -48,17 +50,16 @@ def traffic_jam_rule(neighborhood, c, t):
     result = next(((ind, c) for ind, c in enumerate(list(important_cells)) if
                    value_is_of_interest(ind, c, one_after_current_cell)), (-1, (-1,6)))
     (index_of_interest, cell_of_interest) = result
-
     curr_cell = important_cells[0]  # value in the current cell
     if col == 0 and curr_cell[0] == -1 and random.random() < prop_new_car:
         # Cars will appear randomly at the beginning of each column, if there is space
-        return random.randint(1, max_model_speed)
+        return [random.randint(1, max_model_speed), -1]
     elif col == n_cols - 1:
         # Cars will disappear at the end of each column
-        return -1
+        return [-1,-1]
     elif index_of_interest == -1:
         # If no value of interest is found, the cell is empty in the next time step
-        return -1
+        return [-1,-1]
     else:
         # The car with the value of interest reaches the cell. Its value depends on the rules
         index_in_correct_order = index_of_current_cell - index_of_interest
@@ -75,15 +76,15 @@ def traffic_jam_rule(neighborhood, c, t):
             return_value = gap_size
             # A car within radius will break out a car behind it
         elif cell_of_interest[0] < max_model_speed:
-            return_value = cell_of_interest + 1
+            return_value = cell_of_interest[0] + 1
             # Speed accelerates if no car is within radius and max_speed is not yet reached
         else:
             return_value = max_model_speed
             # Speed is never faster than mox_model_speed
         if random.random() < dawning_factor:
-            return return_value - 1
+            return [return_value - 1,-1]
         else:
-            return return_value
+            return [return_value,-1]
 
 
 def plot2d(ca, timestep=None, title=''):
