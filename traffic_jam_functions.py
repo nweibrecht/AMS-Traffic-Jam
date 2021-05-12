@@ -30,7 +30,7 @@ def evolve2d(cellular_automaton, timesteps, apply_rule, r=1):
 def value_is_of_interest(index, cell, next_cell):
     # The value of interest will reach the current cell in the next time step
     car_will_reach_cell = index == cell
-    car_has_to_break = next_cell != -1 and cell > index - 1
+    car_has_to_break = next_cell != -1 and cell > index
     return car_will_reach_cell or car_has_to_break
 
 
@@ -50,7 +50,7 @@ def traffic_jam_rule(neighborhood, c, t):
                    value_is_of_interest(ind, c, one_after_current_cell)), (-1, -1))
     (index_of_interest, value_of_interest) = result
 
-    curr_cell = important_cells[0]
+    curr_cell = important_cells[0]  # value in the current cell
     if col == 0 and curr_cell == -1 and random.random() < prop_new_car:
         # Cars will appear randomly at the beginning of each column, if there is space
         return random.randint(1, max_model_speed)
@@ -73,14 +73,18 @@ def traffic_jam_rule(neighborhood, c, t):
             gap_size = max_model_speed + 1
             # If no car within radius is found, the gap is wider than max_model_speed and thus irrelevant
         if gap_size <= value_of_interest:
-            return gap_size
+            return_value = gap_size
             # A car within radius will break out a car behind it
         elif value_of_interest < max_model_speed:
-            return value_of_interest + 1
+            return_value = value_of_interest + 1
             # Speed accelerates if no car is within radius and max_speed is not yet reached
         else:
-            return max_model_speed
+            return_value = max_model_speed
             # Speed is never faster than mox_model_speed
+        if random.random() < dawning_factor:
+            return return_value - 1
+        else:
+            return return_value
 
 
 def plot2d(ca, timestep=None, title=''):

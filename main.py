@@ -15,4 +15,5 @@ tjf.plot2d_animate(cellular_automaton)
 # for i in range(1, 5):
 #    tjf.plot2d(cellular_automaton, i)
 
+# tjf.plot2d(cellular_automaton, 5)
 plt.show()
