@@ -1,3 +1,4 @@
+import os
 import random
 import numpy as np
 import matplotlib.pyplot as plt
@@ -112,3 +113,24 @@ def plot2d_animate(ca, title=''):
         return im,
     ani = animation.FuncAnimation(fig, updatefig, interval=2000, blit=True)
     plt.show()
+
+def saveImages(ca, title=''):
+    newpath = "./resources"
+    if not os.path.exists(newpath):
+        os.makedirs(newpath)
+    cmap = plt.get_cmap('viridis')
+    fig = plt.figure()
+    plt.title(title)
+    im = plt.imshow(ca[0], animated=True, cmap=cmap)
+    i = {'index': 0}
+    def updatefig(*args):
+        i['index'] += 1
+        if i['index'] == len(ca):
+            i['index'] = 0
+        im.set_array(ca[i['index']])
+        return im,
+    ani = animation.FuncAnimation(fig, updatefig, interval=10, blit=True)
+    plt.show()
+    for i in range(len(ca)):
+        plt.imshow(ca[i])
+        plt.savefig(f'./resources/{i}.png')
