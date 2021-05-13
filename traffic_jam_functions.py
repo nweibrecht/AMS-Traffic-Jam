@@ -48,11 +48,12 @@ def traffic_jam_rule(neighborhood, c, t):
     one_after_current_cell = important_cells.pop()  # value after the current cell
     important_cells.reverse()
     result = next(((ind, c) for ind, c in enumerate(list(important_cells)) if
-                   value_is_of_interest(ind, c, one_after_current_cell)), (-1, -1))
+                   c!=(-1)), (-1, -1))
     (index_of_interest, value_of_interest) = result
-
+    if not value_is_of_interest(index_of_interest,value_of_interest, one_after_current_cell):
+        index_of_interest = -1
     curr_cell = important_cells[0]  # value in the current cell
-    if col == 0 and curr_cell == -1 and random.random() < prop_new_car:
+    if col == 0 and curr_cell ==-1 and random.random() < prop_new_car: #TODO : discuss about the curr_cell==-1 and not !=0
         # Cars will appear randomly at the beginning of each column, if there is space
         return random.randint(1, max_model_speed)
     elif col == n_cols - 1:
