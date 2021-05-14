@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from settings import *
 maxIndex = n_rows
-
+pairIndexTStart = y = {i:0 for i in range(n_rows)}
+pairIndexDeltaT = []
 def evolve2d(cellular_automaton, timesteps, apply_rule, r=1):
     rows, cols, _ = cellular_automaton.shape
     array = np.zeros((timesteps, rows, cols, 2), dtype=cellular_automaton.dtype)
@@ -47,21 +48,33 @@ def traffic_jam_rule(neighborhood, c, t):
     important_cells = list(curr_lane[:index_of_current_cell + 2])  # cells until one after current cell
     one_after_current_cell = important_cells.pop()  # value after the current cell
     important_cells.reverse()
+    # print(important_cells)
     result = next(((ind, c) for ind, c in enumerate(list(important_cells)) if
-                   c[0]!=(-1)), (-1, (-1,6)))
+                   c[0]!=-1), (-1, (-1,-1)))
+    # print(result)
     (index_of_interest, cell_of_interest) = result
+    speed_of_interest = cell_of_interest[0]
+    not_of_interest = False
     if not value_is_of_interest(index_of_interest,cell_of_interest, one_after_current_cell):
-        index_of_interest = -1
+        not_of_interest = True
     curr_cell = important_cells[0]  # value in the current cell
     if col == 0 and curr_cell[0] == -1 and random.random() < prop_new_car:
         # Cars will appear randomly at the beginning of each column, if there is space
-        return [random.randint(1, max_model_speed), 10]
-    elif col == n_cols - 1:
-        # Cars will disappear at the end of each column
-        return [-1,10]
-    elif index_of_interest == -1:
+        global maxIndex
+        maxIndex += 1
+        global pairIndexTStart
+        pairIndexTStart[maxIndex] = t
+        return [random.randint(1, max_model_speed), maxIndex]
+    elif col == n_cols - 1 :
+        if int(speed_of_interest)>index_of_interest and index_of_interest!=-1:
+            tStart = pairIndexTStart[int(cell_of_interest[1])]
+            deltaT = t - tStart
+            global pairIndexDeltaT
+            pairIndexDeltaT.append([cell_of_interest[1],deltaT])
+        return [-1,-1]
+    elif index_of_interest == -1 or not_of_interest:
         # If no value of interest is found, the cell is empty in the next time step
-        return [-1,10]
+        return [-1,-1]
     else:
         # The car with the value of interest reaches the cell. Its value depends on the rules
         index_in_correct_order = index_of_current_cell - index_of_interest
@@ -74,19 +87,19 @@ def traffic_jam_rule(neighborhood, c, t):
         except StopIteration:
             gap_size = max_model_speed + 1
             # If no car within radius is found, the gap is wider than max_model_speed and thus irrelevant
-        if gap_size <= cell_of_interest[0]:
+        if gap_size <= speed_of_interest:
             return_value = gap_size
             # A car within radius will break out a car behind it
-        elif cell_of_interest[0] < max_model_speed:
-            return_value = cell_of_interest[0] + 1
+        elif speed_of_interest < max_model_speed:
+            return_value = speed_of_interest + 1
             # Speed accelerates if no car is within radius and max_speed is not yet reached
         else:
             return_value = max_model_speed
             # Speed is never faster than mox_model_speed
         if random.random() < dawning_factor:
-            return [return_value - 1,-1]
+            return [return_value - 1,cell_of_interest[1]]
         else:
-            return [return_value,-1]
+            return [return_value,cell_of_interest[1]]
 
 
 def plot2d(ca, timestep=None, title=''):
@@ -101,6 +114,7 @@ def plot2d(ca, timestep=None, title=''):
 
 
 def plot2d_animate(ca, title=''):
+
     cmap = plt.get_cmap('viridis')
     fig = plt.figure()
     plt.title(title)
@@ -116,6 +130,7 @@ def plot2d_animate(ca, title=''):
     plt.show()
 
 def saveImages(ca, title=''):
+    print(pairIndexDeltaT)
     newpath = "./resources"
     if not os.path.exists(newpath):
         os.makedirs(newpath)
