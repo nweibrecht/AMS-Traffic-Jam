@@ -1,3 +1,4 @@
+import os
 import random
 import numpy as np
 import matplotlib.pyplot as plt
@@ -9,7 +10,7 @@ def evolve2d(cellular_automaton, timesteps, apply_rule, r=1):
     rows, cols, _ = cellular_automaton.shape
     array = np.zeros((timesteps, rows, cols, 2), dtype=cellular_automaton.dtype)
     array[0] = cellular_automaton
-    print(array[0])
+
     def get_neighbourhood(cell_layer, row, col):
         # Neighborhood of traffic jam:
         col_indices = range(col - r, col + r + 1)
@@ -41,23 +42,26 @@ def traffic_jam_rule(neighborhood, c, t):
     else:
         row_index_of_lane = 1 # the normal row is in the middle of the neighbor rows
     curr_lane = neighborhood[row_index_of_lane, :]  # lane of the considered cell
+
     index_of_current_cell = col if col <= radius else radius  # index of current cell within neighborhood
     important_cells = list(curr_lane[:index_of_current_cell + 2])  # cells until one after current cell
     one_after_current_cell = important_cells.pop()  # value after the current cell
     important_cells.reverse()
     result = next(((ind, c) for ind, c in enumerate(list(important_cells)) if
-                   value_is_of_interest(ind, c, one_after_current_cell)), (-1, (-1,6)))
-    (index_of_interest, cell_of_interest) = result
+                   c!=(-1)), (-1, (-1,6)))
+    (index_of_interest, value_of_interest) = result
+    if not value_is_of_interest(index_of_interest,value_of_interest, one_after_current_cell):
+        index_of_interest = -1
     curr_cell = important_cells[0]  # value in the current cell
-    if col == 0 and curr_cell[0] == -1 and random.random() < prop_new_car:
+    if col == 0 and curr_cell == -1 and random.random() < prop_new_car:
         # Cars will appear randomly at the beginning of each column, if there is space
-        return [random.randint(1, max_model_speed), -1]
+        return [random.randint(1, max_model_speed), 10]
     elif col == n_cols - 1:
         # Cars will disappear at the end of each column
-        return [-1,-1]
+        return [-1,10]
     elif index_of_interest == -1:
         # If no value of interest is found, the cell is empty in the next time step
-        return [-1,-1]
+        return [-1,10]
     else:
         # The car with the value of interest reaches the cell. Its value depends on the rules
         index_in_correct_order = index_of_current_cell - index_of_interest
@@ -108,8 +112,16 @@ def plot2d_animate(ca, title=''):
             i['index'] = 0
         im.set_array(ca[i['index']])
         return im,
-    ani = animation.FuncAnimation(fig, updatefig, interval=10, blit=True)
+    ani = animation.FuncAnimation(fig, updatefig, interval=2000, blit=True)
     plt.show()
+
+def saveImages(ca, title=''):
+    newpath = "./resources"
+    if not os.path.exists(newpath):
+        os.makedirs(newpath)
+    fig = plt.figure()
+    plt.title(title)
+
     for i in range(len(ca)):
         plt.imshow(ca[i])
         plt.savefig(f'./resources/{i}.png')
