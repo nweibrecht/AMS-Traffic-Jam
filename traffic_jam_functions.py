@@ -112,11 +112,21 @@ def plot2d(ca, timestep=None, title=''):
     plt.figure()
     plt.imshow(data, interpolation='none', cmap=cmap)
 
+def getTimePlot(fig):
+    fig.add_subplot(2,1,2)
+    x = [pairIndexTStart[i] for i in [pairIndexDeltaT[i][0] for i in range(len(pairIndexDeltaT))]]
+    y = [pairIndexDeltaT[i][1] for i in range(len(pairIndexDeltaT))]
+    print(x)
+    print(y)
+    plt.scatter(x,y)
+    plt.xlabel('time of cars appearance (s)')
+    plt.ylabel('time cars take to travel (s)')
 
 def plot2d_animate(ca, title=''):
 
     cmap = plt.get_cmap('viridis')
     fig = plt.figure()
+    fig.add_subplot(2,1,1)
     plt.title(title)
     im = plt.imshow(ca[0], animated=True, cmap=cmap)
     i = {'index': 0}
@@ -126,7 +136,8 @@ def plot2d_animate(ca, title=''):
             i['index'] = 0
         im.set_array(ca[i['index']])
         return im,
-    ani = animation.FuncAnimation(fig, updatefig, interval=2000, blit=True)
+    ani = animation.FuncAnimation(fig, updatefig, interval=1000, blit=True)
+    getTimePlot(fig)
     plt.show()
 
 def saveImages(ca, title=''):
