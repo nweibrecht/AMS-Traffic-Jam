@@ -38,24 +38,20 @@ def value_is_of_interest(index, cell, next_cell):
     return car_will_reach_cell or car_has_to_break
 
 
-def car_will_overtake(index, cell):
-    return 0
-
-
 def traffic_jam_rule(neighborhood, c, t):
     (row, col) = c
     if row == 0:
-        arrange_back_lane = None
+        lane_left = None
         curr_lane = neighborhood[0, :]
-        overtaker_lane = neighborhood[1, :]
+        lane_right = neighborhood[1, :]
     elif row == n_rows - 1:
-        arrange_back_lane = neighborhood[0, :]
+        lane_left = neighborhood[0, :]
         curr_lane = neighborhood[1, :]
-        overtaker_lane = None
+        lane_right = None
     else:
-        arrange_back_lane = neighborhood[0, :]  # lane from which a car could arrange back, using this lane
+        lane_left = neighborhood[0, :]  # lane from which a car could arrange back, using this lane
         curr_lane = neighborhood[1, :]  # the normal row is in the middle of the neighbor rows
-        overtaker_lane = neighborhood[2, :]  # lane from which a car could be overtaking, using this lane
+        lane_right = neighborhood[2, :]  # lane from which a car could be overtaking, using this lane
 
     index_of_current_cell = col if col <= radius else radius  # index of current cell within neighborhood
     important_cells = list(curr_lane[:index_of_current_cell + 2])  # cells until one after current cell
@@ -85,38 +81,56 @@ def traffic_jam_rule(neighborhood, c, t):
         return [-1, -1]
     elif index_of_interest == -1 or not_of_interest:
         # If no value of interest is found, the cell would be empty in the next time step
-        # However, from the neighboring lanes, a car could overtake or arrange back
+        # However, from the neighboring lanes, a car could arrange back or overtake
 
         # Check if a car will overtake
-        if overtaker_lane is not None:
-            important_overtaker_cells = list(overtaker_lane[:index_of_current_cell + 1])
-            # cells until current column in the overtaker lane
-            important_overtaker_cells.reverse()
-            ind_of_car_in_way = next((ind for ind, c in enumerate(list(important_overtaker_cells)) if c[0] != -1), -1)
-            if ind_of_car_in_way != -1:  # there is a car that can force another to brake
-                cells_after_car_in_way = important_overtaker_cells[ind_of_car_in_way + 1:]
-                overtaking_car = next((c for ind, c in enumerate(list(cells_after_car_in_way)) if c[0] == ind + ind_of_car_in_way + 1), (-1, -1))
-                if overtaking_car[0] != -1:
-                    return overtaking_car
+        if lane_right is not None:
+            overtake_from = list(lane_right[:index_of_current_cell])  # cells until current column in the overtaker lane
+            overtaking_car = next(((ind, c) for ind, c in enumerate(list(overtake_from)) if c[0] != -1), (-1, (-1, -1)))
+            relevant_cells = overtake_from[int(overtaking_car[0] + 1):int(overtaking_car[0] + overtaking_car[1][0])]
+            car_needs_to_overtake = np.any([c[0] != -1 for c in relevant_cells])  # there is a car that forces another one to brake
+            space_for_overtake = np.all([c[0] == -1 for c in overtake_from[:int(overtaking_car[0])]])  # Space behind car
+            space_for_overtake &= np.all([c[0] == -1 for c in curr_lane[:index_of_current_cell]])  # Space in lane
+            if lane_left is not None:  # If there is a left lane, check if no car is coming from there
+                space_for_overtake &= np.all([c[0] == -1 for c in lane_left[:index_of_current_cell]])
+            car_has_relevant_speed = overtaking_car[1][0] == index_of_current_cell - overtaking_car[0]
+            if car_needs_to_overtake and space_for_overtake and car_has_relevant_speed:
+                return overtaking_car[1]
 
         # Check if a car will arrange back
-        # if arrange_back_lane is not None:
-        #     return 'Hi'
+        if lane_left is not None:
+            arrange_back_from = list(lane_left[:index_of_current_cell + 1])  # cells until current column in arrange-back lane
+            arrange_back_from.reverse()
+            arrange_back_car = next(((ind, c) for ind, c in enumerate(list(arrange_back_from)) if c[0] == ind != 0), (-1, (-1, -1)))
+            space_for_arranging_back = np.all([c[0] == -1 for c in important_cells[:int(max_model_speed)]])  # Space in lane
+            space_for_arranging_back &= np.all([c[0] == -1 for c in arrange_back_from[:int(arrange_back_car[0])]])
+            if space_for_arranging_back:
+                return arrange_back_car[1]
 
         return [-1, -1]
     else:
         # The car with the value of interest reaches the cell. Its value depends on the rules
         index_in_correct_order = index_of_current_cell - index_of_interest
         # Index of current cell, put back to correct order
+
+        # First, check if the car can arrange back. If so, the cell will be empty
+        if lane_right is not None:
+            cells_to_arange_back = lane_right[index_in_correct_order:][:int(speed_of_interest + 1)]
+            if np.all([c[0] == -1 for c in cells_to_arange_back]) and speed_of_interest != 0:
+                return [-1, -1]
+
         cells_to_consider = curr_lane[index_in_correct_order + 1:]
         # To define new value, consider the cells ahead
         try:
             gap_size = list(cells_to_consider[:, 0]).index(next(v[0] for v in cells_to_consider if int(v[0]) != -1))
             # Gap size is the space until the next cell with a car in it
             # However, if it is too small and the car can overtake, the cell will still be empty
-            if speed_of_interest > gap_size and arrange_back_lane is not None:
-                cells_to_overtake = arrange_back_lane[index_in_correct_order:][:int(gap_size)]
-                if np.all([c == -1 for c in cells_to_overtake]):
+
+            # The car can only overtake, if the second lane to the left is empty, too
+            # Otherwise, a back arranging and an overtaking car could collide
+            if speed_of_interest > gap_size and lane_left is not None:
+                cells_to_overtake = lane_left[index_in_correct_order:][:int(gap_size)]
+                if np.all([c[0] == -1 for c in cells_to_overtake]):
                     return [-1, -1]
 
         except StopIteration:
