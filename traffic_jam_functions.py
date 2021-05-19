@@ -68,7 +68,7 @@ def traffic_jam_rule(neighborhood, c, t):
     speed_of_interest = cell_of_interest[0]
     not_of_interest = False
     # check if the car is of interest : if the speed is enough to reach the cell
-    if not value_is_of_interest(index_of_interest, cell_of_interest, one_after_current_cell, col):
+    if not value_is_of_interest(index_of_interest, cell_of_interest, one_after_current_cell):
         not_of_interest = True
     curr_cell = important_cells[0]  # value in the current cell
     if col == 0 and row == 2 and curr_cell[0] == -1 and random.random() < prop_new_car:
