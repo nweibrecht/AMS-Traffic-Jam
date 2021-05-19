@@ -55,29 +55,36 @@ def traffic_jam_rule(neighborhood, c, t):
 
     index_of_current_cell = col if col <= radius else radius  # index of current cell within neighborhood
     important_cells = list(curr_lane[:index_of_current_cell + 2])  # cells until one after current cell
-    one_after_current_cell = important_cells.pop()  # value after the current cell
+
+    if col != n_rows-1:
+        one_after_current_cell = important_cells.pop()  # value after the current cell
+    else:
+        one_after_current_cell = [-1,-1]
     important_cells.reverse()
+    # Get the closest car to the cell
     result = next(((ind, c) for ind, c in enumerate(list(important_cells)) if
                    c[0] != -1), (-1, (-1, -1)))
     (index_of_interest, cell_of_interest) = result
     speed_of_interest = cell_of_interest[0]
     not_of_interest = False
-    if not value_is_of_interest(index_of_interest, cell_of_interest, one_after_current_cell):
+    # check if the car is of interest : if the speed is enough to reach the cell
+    if not value_is_of_interest(index_of_interest, cell_of_interest, one_after_current_cell, col):
         not_of_interest = True
     curr_cell = important_cells[0]  # value in the current cell
     if col == 0 and row == 2 and curr_cell[0] == -1 and random.random() < prop_new_car:
         # Cars will appear randomly at the beginning of each column, if there is space
         global maxIndex
-        maxIndex += 1
+        maxIndex += 1 # index of the cell that appeared
         global pairIndexTStart
         pairIndexTStart[maxIndex] = t
         return [random.randint(1, max_model_speed), maxIndex]
-    elif col == n_cols - 1:
-        if int(speed_of_interest) > index_of_interest != -1:
-            tStart = pairIndexTStart[int(cell_of_interest[1])]
-            deltaT = t - tStart
-            global pairIndexDeltaT
-            pairIndexDeltaT.append([cell_of_interest[1], deltaT])
+    elif col == n_cols - 1 and int(speed_of_interest) > index_of_interest != -1:
+        # cars with enough speed will disappear
+        tStart = pairIndexTStart[int(cell_of_interest[1])]
+        deltaT = t - tStart
+        global pairIndexDeltaT
+        # we store the time they stayed in pairIndexDeltaT
+        pairIndexDeltaT.append([cell_of_interest[1], deltaT])
         return [-1, -1]
     elif index_of_interest == -1 or not_of_interest:
         # If no value of interest is found, the cell would be empty in the next time step
