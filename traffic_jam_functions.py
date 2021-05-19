@@ -7,7 +7,7 @@ from settings import *
 maxIndex = n_rows
 pairIndexTStart = y = {i: 0 for i in range(n_rows)}
 pairIndexDeltaT = []
-
+random.seed(seed)
 
 def evolve2d(cellular_automaton, timesteps, apply_rule, r=1):
     rows, cols, _ = cellular_automaton.shape
@@ -93,7 +93,7 @@ def traffic_jam_rule(neighborhood, c, t):
         # Check if a car will overtake
         if lane_right is not None:
             overtake_from = list(lane_right[:index_of_current_cell])  # cells until current column in the overtaker lane
-            overtaking_car = next(((ind, c) for ind, c in enumerate(list(overtake_from)) if c[0] != -1), (-1, (-1, -1)))
+            overtaking_car = next(((ind, c) for ind, c in enumerate(list(overtake_from)) if c[0] > -1), (-1, (-1, -1)))
             relevant_cells = overtake_from[int(overtaking_car[0] + 1):int(overtaking_car[0] + overtaking_car[1][0])]
             car_needs_to_overtake = np.any([c[0] != -1 for c in relevant_cells])  # there is a car that forces another one to brake
             space_for_overtake = np.all([c[0] == -1 for c in overtake_from[:int(overtaking_car[0])]])  # Space behind car
