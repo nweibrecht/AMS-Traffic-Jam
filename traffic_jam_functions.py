@@ -56,7 +56,7 @@ def traffic_jam_rule(neighborhood, c, t):
     index_of_current_cell = col if col <= radius else radius  # index of current cell within neighborhood
     important_cells = list(curr_lane[:index_of_current_cell + 2])  # cells until one after current cell
 
-    if col != n_rows-1:
+    if col != n_cols-1:
         one_after_current_cell = important_cells.pop()  # value after the current cell
     else:
         one_after_current_cell = [-1,-1]
