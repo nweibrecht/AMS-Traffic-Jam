@@ -86,7 +86,7 @@ def traffic_jam_rule(neighborhood, c, t):
         # we store the time they stayed in pairIndexDeltaT
         pairIndexDeltaT.append([cell_of_interest[1], deltaT])
         return [-1, -1]
-    elif index_of_interest == -1 or not_of_interest:
+    elif index_of_interest == -1 or not_of_interest: # if there's no car in the lane or if it doesn't go fast enough
         # If no value of interest is found, the cell would be empty in the next time step
         # However, from the neighboring lanes, a car could arrange back or overtake
 
@@ -109,7 +109,7 @@ def traffic_jam_rule(neighborhood, c, t):
             arrange_back_from = list(lane_left[:index_of_current_cell + 1])  # cells until current column in arrange-back lane
             arrange_back_from.reverse()
             arrange_back_car = next(((ind, c) for ind, c in enumerate(list(arrange_back_from)) if c[0] == ind != 0), (-1, (-1, -1)))
-            space_for_arranging_back = np.all([c[0] == -1 for c in important_cells[:int(max_model_speed)]])  # Space in lane
+            space_for_arranging_back = np.all([c[0] == -1 for c in important_cells[:int(max_model_speed+1)]])  # Space in lane
             space_for_arranging_back &= np.all([c[0] == -1 for c in arrange_back_from[:int(arrange_back_car[0])]])
             if space_for_arranging_back:
                 return arrange_back_car[1]
@@ -122,7 +122,16 @@ def traffic_jam_rule(neighborhood, c, t):
 
         # First, check if the car can arrange back. If so, the cell will be empty
         if lane_right is not None:
-            cells_to_arange_back = lane_right[index_in_correct_order:][:int(speed_of_interest + 1)]
+            print("lane right : " +str(lane_right))
+            if (index_in_correct_order + speed_of_interest - max_model_speed) > 0 :
+                index_to_start_checking = index_in_correct_order + speed_of_interest - max_model_speed
+            else :
+                index_to_start_checking = 0
+            print(index_to_start_checking)
+            print(index_in_correct_order)
+            print(speed_of_interest)
+            cells_to_arange_back = lane_right[int(index_to_start_checking):int(index_in_correct_order + speed_of_interest+1)]
+            print(lane_right[index_in_correct_order:][:int(speed_of_interest + 1)])
             if np.all([c[0] == -1 for c in cells_to_arange_back]) and speed_of_interest != 0:
                 return [-1, -1]
 
