@@ -17,7 +17,7 @@ def evolve2d(cellular_automaton, timesteps, apply_rule, r=1):
     def get_neighbourhood(cell_layer, row, col):
         # Neighborhood of traffic jam:
         col_indices = range(col - r, col + r + 1)
-        row_indices = range(row - 1, row + 2)
+        row_indices = range(row - 2, row + 2)
         row_indices = [i for i in row_indices if 0 <= i < n_rows]
         col_indices = [i for i in col_indices if 0 <= i < n_cols]
         return cell_layer[np.ix_(row_indices, col_indices)]
@@ -41,17 +41,25 @@ def value_is_of_interest(index, cell, next_cell):
 def traffic_jam_rule(neighborhood, c, t):
     (row, col) = c
     if row == 0:
+        lane_two_left = None
         lane_left = None
         curr_lane = neighborhood[0, :]
         lane_right = neighborhood[1, :]
-    elif row == n_rows - 1:
+    elif row == 1:
+        lane_two_left = None
         lane_left = neighborhood[0, :]
         curr_lane = neighborhood[1, :]
+        lane_right = neighborhood[2, :]
+    elif row == n_rows - 1:
+        lane_two_left = neighborhood[0, :]
+        lane_left = neighborhood[1, :]
+        curr_lane = neighborhood[2, :]
         lane_right = None
     else:
-        lane_left = neighborhood[0, :]  # lane from which a car could arrange back, using this lane
-        curr_lane = neighborhood[1, :]  # the normal row is in the middle of the neighbor rows
-        lane_right = neighborhood[2, :]  # lane from which a car could be overtaking, using this lane
+        lane_two_left = neighborhood[0, :]
+        lane_left = neighborhood[1, :]  # lane from which a car could arrange back, using this lane
+        curr_lane = neighborhood[2, :]  # the normal row is in the middle of the neighbor rows
+        lane_right = neighborhood[3, :]  # lane from which a car could be overtaking, using this lane
 
     index_of_current_cell = col if col <= radius else radius  # index of current cell within neighborhood
     important_cells = list(curr_lane[:index_of_current_cell + 2])  # cells until one after current cell
@@ -71,6 +79,7 @@ def traffic_jam_rule(neighborhood, c, t):
     if not value_is_of_interest(index_of_interest, cell_of_interest, one_after_current_cell):
         not_of_interest = True
     curr_cell = important_cells[0]  # value in the current cell
+    # if col == 0 and curr_cell[0] == -1 and random.random() < prop_new_car:
     if col == 0 and row == 2 and curr_cell[0] == -1 and random.random() < prop_new_car:
         # Cars will appear randomly at the beginning of each column, if there is space
         global maxIndex
@@ -122,17 +131,14 @@ def traffic_jam_rule(neighborhood, c, t):
 
         # First, check if the car can arrange back. If so, the cell will be empty
         if lane_right is not None:
-            print("lane right : " +str(lane_right))
             if (index_in_correct_order + speed_of_interest - max_model_speed) > 0 :
                 index_to_start_checking = index_in_correct_order + speed_of_interest - max_model_speed
-            else :
+            else:
                 index_to_start_checking = 0
-            print(index_to_start_checking)
-            print(index_in_correct_order)
-            print(speed_of_interest)
             cells_to_arange_back = lane_right[int(index_to_start_checking):int(index_in_correct_order + speed_of_interest+1)]
-            print(lane_right[index_in_correct_order:][:int(speed_of_interest + 1)])
-            if np.all([c[0] == -1 for c in cells_to_arange_back]) and speed_of_interest != 0:
+            space_to_arrange_back = np.all([c[0] == -1 for c in cells_to_arange_back])
+            space_to_arrange_back &= np.all([c[0] == -1 for c in important_cells[:int(speed_of_interest)]])
+            if space_to_arrange_back and speed_of_interest != 0:
                 return [-1, -1]
 
         cells_to_consider = curr_lane[index_in_correct_order + 1:]
@@ -147,7 +153,10 @@ def traffic_jam_rule(neighborhood, c, t):
             if speed_of_interest > gap_size and lane_left is not None:
                 cells_to_overtake = lane_left[index_in_correct_order:][:int(gap_size)]
                 if np.all([c[0] == -1 for c in cells_to_overtake]):
-                    return [-1, -1]
+                    if lane_two_left is None:
+                        return [-1, -1]
+                    elif np.all([c[0] == -1 for c in lane_two_left]):
+                        return [-1, -1]
 
         except StopIteration:
             gap_size = max_model_speed + 1
