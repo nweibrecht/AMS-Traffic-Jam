@@ -5,15 +5,20 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from settings import *
 maxIndex = n_rows
-pairIndexTStart = y = {i: 0 for i in range(n_rows)}
-pairIndexDeltaT = []
+pairIndexTStart = y = {i: 0 for i in range(n_rows)} # Pair linking the index of the car and the time it appeared
+pairIndexDeltaT = [] # Pair linking the index of the car and the time it took to to travel
+pairNumberSpeed_t = [[-1,0] for i in range(n_cols)] # Pair linking the number of cars that have gone to a specific cell and the mean speed they had
+pairNumberSpeed_overall = []
 random.seed(seed)
 
 def evolve2d(cellular_automaton, timesteps, apply_rule, r=1):
     rows, cols, _ = cellular_automaton.shape
     array = np.zeros((timesteps, rows, cols, 2), dtype=cellular_automaton.dtype)
     array[0] = cellular_automaton
+    global pairNumberSpeed_overall
+    global pairNumberSpeed_t
 
+    pairNumberSpeed_overall.append(pairNumberSpeed_t.copy())
     def get_neighbourhood(cell_layer, row, col):
         # Neighborhood of traffic jam:
         col_indices = range(col - r, col + r + 1)
@@ -28,6 +33,13 @@ def evolve2d(cellular_automaton, timesteps, apply_rule, r=1):
             for col, cell in enumerate(cell_row):
                 n = get_neighbourhood(cell_layer, row, col)
                 array[t][row][col] = apply_rule(n, (row, col), t)
+
+        pairNumberSpeed_overall.append(pairNumberSpeed_t.copy())
+        # if we want pair NumberSpeed_speed not to take into account the other timesteps
+        if not mean_over_all_timesteps:
+            # reset it at everytimestep
+            pairNumberSpeed_t = [[-1, 0] for i in range(n_cols)]
+        print(pairNumberSpeed_t)
     return array
 
 
@@ -36,6 +48,13 @@ def value_is_of_interest(index, cell, next_cell):
     car_will_reach_cell = index == cell[0]
     car_has_to_break = next_cell[0] != -1 and cell[0] > index
     return car_will_reach_cell or car_has_to_break
+
+def add_speed_to_list(col, real_speed):
+    # add the speed of the car to the list
+    global pairNumberSpeed_t
+    for i in range(real_speed):  # index_of_interest represents the real speed the car is coming with
+        pairNumberSpeed_t[col - i] = [(pairNumberSpeed_t[col - i][0] * pairNumberSpeed_t[col - i][1] + real_speed) / (
+                    pairNumberSpeed_t[col - i][1] + 1), pairNumberSpeed_t[col - i][1] + 1]
 
 
 def traffic_jam_rule(neighborhood, c, t):
@@ -80,13 +99,14 @@ def traffic_jam_rule(neighborhood, c, t):
         not_of_interest = True
     curr_cell = important_cells[0]  # value in the current cell
     # if col == 0 and curr_cell[0] == -1 and random.random() < prop_new_car:
-    if col == 0 and row == 2 and curr_cell[0] == -1 and random.random() < prop_new_car:
+    if col == 0 and curr_cell[0] == -1 and random.random() < prop_new_car:
         # Cars will appear randomly at the beginning of each column, if there is space
         global maxIndex
         maxIndex += 1 # index of the cell that appeared
         global pairIndexTStart
         pairIndexTStart[maxIndex] = t
-        return [random.randint(1, max_model_speed), maxIndex]
+        speed = random.randint(1, max_model_speed)
+        return [speed, maxIndex]
     elif col == n_cols - 1 and int(speed_of_interest) > index_of_interest != -1:
         # cars with enough speed will disappear
         tStart = pairIndexTStart[int(cell_of_interest[1])]
@@ -111,6 +131,7 @@ def traffic_jam_rule(neighborhood, c, t):
                 space_for_overtake &= np.all([c[0] == -1 for c in lane_left[:index_of_current_cell]])
             car_has_relevant_speed = overtaking_car[1][0] == index_of_current_cell - overtaking_car[0]
             if car_needs_to_overtake and space_for_overtake and car_has_relevant_speed:
+                add_speed_to_list(col, int(overtaking_car[1][0]))
                 return overtaking_car[1]
 
         # Check if a car will arrange back
@@ -121,6 +142,7 @@ def traffic_jam_rule(neighborhood, c, t):
             space_for_arranging_back = np.all([c[0] == -1 for c in important_cells[:int(max_model_speed+1)]])  # Space in lane
             space_for_arranging_back &= np.all([c[0] == -1 for c in arrange_back_from[:int(arrange_back_car[0])]])
             if space_for_arranging_back:
+                add_speed_to_list(col, arrange_back_car[0])
                 return arrange_back_car[1]
 
         return [-1, -1]
@@ -170,6 +192,7 @@ def traffic_jam_rule(neighborhood, c, t):
         else:
             return_value = max_model_speed
             # Speed is never faster than mox_model_speed
+        add_speed_to_list(col, index_of_interest)
         if random.random() < dawning_factor:
             return [return_value - 1, cell_of_interest[1]]
         else:
@@ -186,15 +209,22 @@ def plot2d(ca, timestep=None, title=''):
     plt.figure()
     plt.imshow(data, interpolation='none', cmap=cmap)
 
-def getTimePlot(fig):
-    fig.add_subplot(2,1,2)
+def getTimePlot(axe):
     x = [pairIndexTStart[i] for i in [pairIndexDeltaT[i][0] for i in range(len(pairIndexDeltaT))]]
     y = [pairIndexDeltaT[i][1] for i in range(len(pairIndexDeltaT))]
-    print(x)
-    print(y)
-    plt.scatter(x,y)
-    plt.xlabel('time of cars appearance (s)')
-    plt.ylabel('time cars take to travel (s)')
+    axe.step(x,y)
+    axe.set_xlabel('time of cars appearance (s)')
+    axe.set_ylabel('time cars take to travel (s)')
+
+def getMeanSpeedPlot(ax, t):
+    x = range(n_cols)
+    y = [pairNumberSpeed_overall[t][i][0] for i in range(len(pairNumberSpeed_t))]
+    ax.step(x, y)
+    ax.set_ylim(0,max_model_speed+1)
+    ax.set_yticks(np.arange(0, max_model_speed+1, step=1))
+    ax.set_xticks(np.arange(0, n_cols, step=2))
+    ax.set_xlabel('positions of cars')
+    ax.set_ylabel('average speed')
 
 def plot2d_animate(ca, title=''):
     cmap = plt.get_cmap('viridis')
@@ -220,8 +250,14 @@ def saveImages(ca, title=''):
     if not os.path.exists(newpath):
         os.makedirs(newpath)
     fig = plt.figure()
-    plt.title(title)
 
+    #getTimePlot(axes[1])
+
+    plt.title(title)
     for i in range(len(ca)):
-        plt.imshow(ca[i], vmin=-1, vmax=7)
+        fig, axes = plt.subplots(2)
+        axes[0].imshow(ca[i], vmin=-1, vmax=7)
+        getMeanSpeedPlot(axes[1],i)
+
         plt.savefig(f'./resources/{i}.png')
+        plt.close(fig)
