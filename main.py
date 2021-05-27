@@ -4,8 +4,8 @@ import traffic_jam_functions as tjf
 import matplotlib.pyplot as plt
 
 # initialize the CA
-
-cellular_automaton = np.ones((n_rows, n_cols,2)) * (-1)
+np.random.seed(seed)
+cellular_automaton = np.ones((n_rows, n_cols, 2)) * (-1)
 cellular_automaton[:, 0, 0] = np.random.randint(0, max_model_speed, n_rows)
 cellular_automaton[:, 0, 1] = [i for i in range(n_rows)]
 print(cellular_automaton.shape)
