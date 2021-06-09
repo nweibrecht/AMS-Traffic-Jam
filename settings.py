@@ -4,11 +4,13 @@
 # 1 time step corresponds to 1 second
 
 n_rows = 5
-n_cols = 50
+what_to_block_when = [[4,5,10],[1,0,10]] # [[row,col,t],[...]]]
+n_cols = 20
 max_model_speed = 7  # 35 m/s --> 126 km/h
-n_time_steps = 200
-prop_new_car = 0.8  # could be made timestep-dependent
+n_time_steps = 30
+n_new_cars_per_t = 1
+prop_new_car_t0 = n_new_cars_per_t / (n_rows)
 dawning_factor = 0.0
-seed = 1
+seed = 2
 radius = max_model_speed
 mean_over_all_timesteps = True

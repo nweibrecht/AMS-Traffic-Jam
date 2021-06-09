@@ -5,13 +5,17 @@ import statistics
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+
 from settings import *
 maxIndex = n_rows
 pairIndexTStart = y = {i: 0 for i in range(n_rows)} # Pair linking the index of the car and the time it appeared
 pairIndexDeltaT = [] # Pair linking the index of the car and the time it took to to travel
 pairNumberSpeed_t = [[[-1,0] for i in range(n_cols)] for j in range(n_rows)] # Pair linking the number of cars that have gone to a specific cell and the mean speed they had
 pairNumberSpeed_overall = []
+cells_overall = [[['' for i in range(n_cols)] for j in range(n_rows)]]
+blocked_cells = dict()
 random.seed(seed)
+prop_new_car = prop_new_car_t0
 def copyOfPairNumberSpeedT():
     newPair = []
     for row in range(n_rows):
@@ -20,6 +24,34 @@ def copyOfPairNumberSpeedT():
             newPair[row].append([pairNumberSpeed_t[row][col][0],pairNumberSpeed_t[row][col][1]])
     return newPair
 
+def block_event(t):
+    # we add a the block events that are written in what_to_block_when
+    for info in what_to_block_when:
+        if t == info[2] :
+            blocked_cells[info[0]] = info[1]
+
+    # formatting the cells_overall for timestep t
+    cells_t = [['' for i in range(n_cols)] for j in range(n_rows)]
+    n_rows_where_cars_cant_appear = 0
+    for row in blocked_cells.keys():
+        for i in range(int(blocked_cells[row]), n_cols):
+            cells_t[row][i] = 'x'
+    cells_overall.append(cells_t)
+
+
+def get_prop_new_car(cars_t):
+    n_rows_where_cars_cant_appear = 0
+    for row in range(n_rows):
+        if cars_t[row][0][0] != -1:
+            n_rows_where_cars_cant_appear += 1
+    global prop_new_car
+    if n_rows - n_rows_where_cars_cant_appear == 0:
+        prop_new_car = 1
+    else :
+        prop_new_car = n_new_cars_per_t / (n_rows - n_rows_where_cars_cant_appear)
+    if prop_new_car > 1:
+        prop_new_car = 1
+
 def evolve2d(cellular_automaton, timesteps, apply_rule, r=1):
     rows, cols, _ = cellular_automaton.shape
     array = np.zeros((timesteps, rows, cols, 2), dtype=cellular_automaton.dtype)
@@ -27,7 +59,7 @@ def evolve2d(cellular_automaton, timesteps, apply_rule, r=1):
     global pairNumberSpeed_overall
     global pairNumberSpeed_t
 
-    pairNumberSpeed_overall.append(pairNumberSpeed_t.copy())
+    pairNumberSpeed_overall.append(copyOfPairNumberSpeedT())
     def get_neighbourhood(cell_layer, row, col):
         # Neighborhood of traffic jam:
         col_indices = range(col - r, col + r + 1)
@@ -37,11 +69,13 @@ def evolve2d(cellular_automaton, timesteps, apply_rule, r=1):
         return cell_layer[np.ix_(row_indices, col_indices)]
 
     for t in range(1, timesteps):
+        block_event(t)
         cell_layer = array[t - 1]  # cell_layer represents the grid at time t-1
         for row, cell_row in enumerate(cell_layer):
             for col, cell in enumerate(cell_row):
                 n = get_neighbourhood(cell_layer, row, col)
                 array[t][row][col] = apply_rule(n, (row, col), t)
+        get_prop_new_car(array[t])
 
         pairNumberSpeed_overall.append(copyOfPairNumberSpeedT())
         # if we want pair NumberSpeed_speed not to take into account the other timesteps
@@ -50,6 +84,12 @@ def evolve2d(cellular_automaton, timesteps, apply_rule, r=1):
             pairNumberSpeed_t = [[[-1,0] for i in range(n_cols)] for j in range(n_rows)]
     return array
 
+def is_blocked(row,col) :
+    blocked_rows = blocked_cells.keys()
+    if row in blocked_rows and col > blocked_cells[row] : #only greater because the a car with 0 speed is placed in the =
+        return True
+    else :
+        return False
 
 def value_is_of_interest(index, cell, next_cell):
     # The value of interest will reach the current cell in the next time step
@@ -91,6 +131,13 @@ def traffic_jam_rule(neighborhood, c, t):
     index_of_current_cell = col if col <= radius else radius  # index of current cell within neighborhood
     important_cells = list(curr_lane[:index_of_current_cell + 2])  # cells until one after current cell
 
+    ## check if the cell is blocked
+    if is_blocked(row, col):
+        return [-1, -1]
+    # return the blocking object if the cell is the starting point of the blocking lane
+    if row in blocked_cells and blocked_cells[row] == col :
+        return [0,-1]
+
     if col != n_cols-1:
         one_after_current_cell = important_cells.pop()  # value after the current cell
     else:
@@ -106,7 +153,6 @@ def traffic_jam_rule(neighborhood, c, t):
     if not value_is_of_interest(index_of_interest, cell_of_interest, one_after_current_cell):
         not_of_interest = True
     curr_cell = important_cells[0]  # value in the current cell
-    # if col == 0 and curr_cell[0] == -1 and random.random() < prop_new_car:
     if col == 0 and curr_cell[0] == -1 and random.random() < prop_new_car:
         # Cars will appear randomly at the beginning of each column, if there is space
         global maxIndex
@@ -126,24 +172,34 @@ def traffic_jam_rule(neighborhood, c, t):
     elif index_of_interest == -1 or not_of_interest: # if there's no car in the lane or if it doesn't go fast enough
         # If no value of interest is found, the cell would be empty in the next time step
         # However, from the neighboring lanes, a car could arrange back or overtake
-
         # Check if a car will overtake
-        if lane_right is not None:
-            overtake_from = list(lane_right[:index_of_current_cell])  # cells until current column in the overtaker lane
-            overtaking_car = next(((ind, c) for ind, c in enumerate(list(overtake_from)) if c[0] > -1), (-1, (-1, -1)))
-            relevant_cells = overtake_from[int(overtaking_car[0] + 1):int(overtaking_car[0] + overtaking_car[1][0])]
+        if lane_right is not None and not is_blocked(row,col) and col != 0:
+            overtake_from = list(lane_right[:index_of_current_cell+2])  # cells until current column in the overtaker lane
+            overtaking_car = next(((ind, c) for ind, c in enumerate(list(overtake_from[:-1])) if c[0] == index_of_current_cell - ind and c[1] > -1), (-1, (-1, -1)))
+            if overtaking_car[1][0] != 0:
+                relevant_cells = overtake_from[int(overtaking_car[0] + 1):int(overtaking_car[0] + overtaking_car[1][0] + 1)]
+            else:
+                relevant_cells = [overtake_from[int(overtaking_car[0] + 1)]]
             car_needs_to_overtake = np.any([c[0] != -1 for c in relevant_cells])  # there is a car that forces another one to brake
-            space_for_overtake = np.all([c[0] == -1 for c in overtake_from[:int(overtaking_car[0])]])  # Space behind car
-            space_for_overtake &= np.all([c[0] == -1 for c in curr_lane[:index_of_current_cell]])  # Space in lane
-            if lane_left is not None:  # If there is a left lane, check if no car is coming from there
+            space_for_overtake = np.all([c[0] <= overtaking_car[1][0] for c in overtake_from[:int(overtaking_car[0])]])  # Space behind car
+            space_for_overtake &= np.all([c[0] == -1 for c in curr_lane[:index_of_current_cell+1]])  # Space in lane
+            if lane_left is not None :  # If there is a left lane, check if no car is coming from there
                 space_for_overtake &= np.all([c[0] == -1 for c in lane_left[:index_of_current_cell]])
-            car_has_relevant_speed = overtaking_car[1][0] == index_of_current_cell - overtaking_car[0]
-            if car_needs_to_overtake and space_for_overtake and car_has_relevant_speed:
+            if col == 1 and row == 1:
+                print(t)
+                print(overtake_from)
+                print(overtaking_car)
+                print(relevant_cells)
+                print(car_needs_to_overtake)
+                print(space_for_overtake)
+            if car_needs_to_overtake and space_for_overtake:
                 add_speed_to_list(row, col, int(overtaking_car[1][0]))
+                if (overtaking_car[1][0] == 0):
+                    overtaking_car[1][0] += 1
                 return overtaking_car[1]
 
         # Check if a car will arrange back
-        if lane_left is not None:
+        if lane_left is not None and not is_blocked(row,col):
             arrange_back_from = list(lane_left[:index_of_current_cell + 1])  # cells until current column in arrange-back lane
             arrange_back_from.reverse()
             arrange_back_car = next(((ind, c) for ind, c in enumerate(list(arrange_back_from)) if c[0] == ind != 0), (-1, (-1, -1)))
@@ -160,7 +216,7 @@ def traffic_jam_rule(neighborhood, c, t):
         # Index of current cell, put back to correct order
 
         # First, check if the car can arrange back. If so, the cell will be empty
-        if lane_right is not None:
+        if lane_right is not None and not is_blocked(row+1,col) :
             if (index_in_correct_order + speed_of_interest - max_model_speed) > 0 :
                 index_to_start_checking = index_in_correct_order + speed_of_interest - max_model_speed
             else:
@@ -180,13 +236,14 @@ def traffic_jam_rule(neighborhood, c, t):
 
             # The car can only overtake, if the second lane to the left is empty, too
             # Otherwise, a back arranging and an overtaking car could collide
-            if speed_of_interest > gap_size and lane_left is not None:
-                cells_to_overtake = lane_left[index_in_correct_order:][:int(gap_size)]
-                if np.all([c[0] == -1 for c in cells_to_overtake]):
-                    if lane_two_left is None:
-                        return [-1, -1]
-                    elif np.all([c[0] == -1 for c in lane_two_left]):
-                        return [-1, -1]
+            if (speed_of_interest > gap_size or speed_of_interest == 0) and lane_left is not None and not is_blocked(row-1,col) and col != 0:
+                if np.all([c[0] <= speed_of_interest for c in curr_lane[:int(index_of_current_cell)]]):
+                    cells_to_overtake = lane_left[:int(index_in_correct_order + speed_of_interest +1)]
+                    if np.all([c[0] == -1 for c in cells_to_overtake]):
+                        if lane_two_left is None:
+                            return [-1, -1]
+                        elif np.all([c[0] == -1 for c in lane_two_left[:int(index_in_correct_order + speed_of_interest +1)]]):
+                            return [-1, -1]
 
         except StopIteration:
             gap_size = max_model_speed + 1
@@ -258,12 +315,20 @@ def plot2d_animate(ca, title=''):
     ani = animation.FuncAnimation(fig, updatefig, interval=1000, blit=True)
     plt.show()
 
+
+
 def saveImage(ca, timestep):
     fig, axes = plt.subplots(2)
     axes[0].imshow(ca[timestep], vmin=-1, vmax=7)
+    # Loop over data dimensions and create text annotations.
+    formattedBlockedCells = cells_overall[timestep]
+    for i in range(n_rows):
+        for j in range(n_cols):
+            axes[0].text(j, i, formattedBlockedCells[i][j],
+                           ha="center", va="center", color="w")
     for j in range(-1,n_rows):
         getMeanSpeedPlot(axes[1], timestep, j)
-    legend = axes[1].legend(loc='lower right', framealpha=0.5, fontsize='small')
+    axes[1].legend(loc='lower right', framealpha=0.5, fontsize='small')
 
     plt.savefig(f'./resources/{timestep}.png')
     plt.close(fig)
