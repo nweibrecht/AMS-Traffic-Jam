@@ -105,24 +105,31 @@ def add_speed_to_list(row, col, real_speed):
                     pairNumberSpeed_t[row][col - i][1] + 1), pairNumberSpeed_t[row][col - i][1] + 1]
 
 
+def get_lane(nh, lane_nr):
+    try:
+        return nh[lane_nr, :]
+    except IndexError:
+        return None
+
+
 def traffic_jam_rule(neighborhood, c, t):
     (row, col) = c
     if row == 0:
         lane_two_left = None
         lane_left = None
         curr_lane = neighborhood[0, :]
-        lane_right = neighborhood[1, :]
+        lane_right = get_lane(neighborhood, 1)
     elif row == 1:
         lane_two_left = None
         lane_left = neighborhood[0, :]
         curr_lane = neighborhood[1, :]
-        lane_right = neighborhood[2, :]
-    elif row == n_rows - 1:
+        lane_right = get_lane(neighborhood, 2)
+    elif row == n_rows - 1:  # last lane, and row is at least 2
         lane_two_left = neighborhood[0, :]
         lane_left = neighborhood[1, :]
         curr_lane = neighborhood[2, :]
         lane_right = None
-    else:
+    else:  # middle lane, at least 2
         lane_two_left = neighborhood[0, :]
         lane_left = neighborhood[1, :]  # lane from which a car could arrange back, using this lane
         curr_lane = neighborhood[2, :]  # the normal row is in the middle of the neighbor rows
@@ -316,6 +323,12 @@ def plot2d_animate(ca, title=''):
     plt.show()
 
 
+def create_text_tuple(i, j, t, ca, fbc, text):
+    if ca[t][i][j] != -1:  # return speed of car
+        return text(j, i, ca[t][i][j], ha="center", va="center")
+    else:  # return 'x' or ''
+        return text(j, i, fbc[i][j], ha="center", va="center", color='w')
+
 
 def saveImage(ca, timestep):
     fig, axes = plt.subplots(2)
@@ -324,8 +337,8 @@ def saveImage(ca, timestep):
     formattedBlockedCells = cells_overall[timestep]
     for i in range(n_rows):
         for j in range(n_cols):
-            axes[0].text(j, i, formattedBlockedCells[i][j],
-                           ha="center", va="center", color="w")
+            create_text_tuple(i, j, timestep, ca, formattedBlockedCells, axes[0].text)
+            # axes[0].text(j, i, formattedBlockedCells[i][j], ha="center", va="center", color="w")
     for j in range(-1,n_rows):
         getMeanSpeedPlot(axes[1], timestep, j)
     axes[1].legend(loc='lower right', framealpha=0.5, fontsize='small')
