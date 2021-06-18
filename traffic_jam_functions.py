@@ -324,15 +324,16 @@ def plot2d_animate(ca, title=''):
 
 
 def create_text_tuple(i, j, t, ca, fbc, text):
-    if ca[t][i][j] != -1:  # return speed of car
-        return text(j, i, ca[t][i][j], ha="center", va="center")
+    speed = ca[t][i][j]
+    if speed != -1:  # return speed of car
+        return text(j, i, speed, ha="center", va="center", color='w' if speed <= 2 else 'k')
     else:  # return 'x' or ''
         return text(j, i, fbc[i][j], ha="center", va="center", color='w')
 
 
 def saveImage(ca, timestep):
-    fig, axes = plt.subplots(2)
-    axes[0].imshow(ca[timestep], vmin=-1, vmax=7)
+    fig, axes = plt.subplots(2,figsize=(20, 10))
+    axes[0].imshow(ca[timestep], vmin=-1, vmax=max_model_speed)
     # Loop over data dimensions and create text annotations.
     formattedBlockedCells = cells_overall[timestep]
     for i in range(n_rows):
