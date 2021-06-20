@@ -327,7 +327,7 @@ def create_text_tuple(i, j, t, ca, numbers, fbc, text):
     speed = ca[t][i][j]
     number = numbers[t][i][j]
     if speed != -1:  # return number of car
-        return text(j, i, '%1.0f' % number, ha="center", va="center", color='w' if number <= 2 else 'k')
+        return text(j, i, '%1.0f' % number, ha="center", va="center", color='w' if speed <= 2 else 'k')
     else:  # return 'x' or ''
         return text(j, i, fbc[i][j], ha="center", va="center", color='w')
 
