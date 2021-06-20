@@ -15,7 +15,8 @@ print(cellular_automaton.shape)
 cellular_automaton = tjf.evolve2d(cellular_automaton, timesteps=n_time_steps,
                                   apply_rule=lambda n, c, t: tjf.traffic_jam_rule(n, c, t), r=radius)
 values = cellular_automaton[:,:,:,0]
+car_numbers = cellular_automaton[:,:,:,1]
 print(values.shape)
-tjf.saveImages(values)
+tjf.saveImages(values, car_numbers)
 # tjf.saveImage(values,n_time_steps-1)
 plt.show()

@@ -323,22 +323,23 @@ def plot2d_animate(ca, title=''):
     plt.show()
 
 
-def create_text_tuple(i, j, t, ca, fbc, text):
+def create_text_tuple(i, j, t, ca, numbers, fbc, text):
     speed = ca[t][i][j]
-    if speed != -1:  # return speed of car
-        return text(j, i, speed, ha="center", va="center", color='w' if speed <= 2 else 'k')
+    number = numbers[t][i][j]
+    if speed != -1:  # return number of car
+        return text(j, i, '%1.0f' % number, ha="center", va="center", color='w' if number <= 2 else 'k')
     else:  # return 'x' or ''
         return text(j, i, fbc[i][j], ha="center", va="center", color='w')
 
 
-def saveImage(ca, timestep):
+def saveImage(ca, numbers, timestep):
     fig, axes = plt.subplots(2,figsize=(20, 10))
     axes[0].imshow(ca[timestep], vmin=-1, vmax=max_model_speed)
     # Loop over data dimensions and create text annotations.
     formattedBlockedCells = cells_overall[timestep]
     for i in range(n_rows):
         for j in range(n_cols):
-            create_text_tuple(i, j, timestep, ca, formattedBlockedCells, axes[0].text)
+            create_text_tuple(i, j, timestep, ca, numbers, formattedBlockedCells, axes[0].text)
             # axes[0].text(j, i, formattedBlockedCells[i][j], ha="center", va="center", color="w")
     for j in range(-1,n_rows):
         getMeanSpeedPlot(axes[1], timestep, j)
@@ -347,7 +348,7 @@ def saveImage(ca, timestep):
     plt.savefig(f'./resources/{timestep}.png')
     plt.close(fig)
 
-def saveImages(ca, title=''):
+def saveImages(ca, numbers, title=''):
     newpath = "./resources"
     if not os.path.exists(newpath):
         os.makedirs(newpath)
@@ -356,4 +357,4 @@ def saveImages(ca, title=''):
 
     plt.title(title)
     for t in range(len(ca)):
-        saveImage(ca,t)
+        saveImage(ca, numbers, t)
