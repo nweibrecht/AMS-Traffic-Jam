@@ -333,8 +333,9 @@ def create_text_tuple(i, j, t, ca, numbers, fbc, text):
 
 
 def saveImage(ca, numbers, timestep):
-    fig, axes = plt.subplots(2,figsize=(20, 10))
-    axes[0].imshow(ca[timestep], vmin=-1, vmax=max_model_speed)
+    fig, axes = plt.subplots(2, figsize=(20, 10))
+    im = axes[0].imshow(ca[timestep], vmin=-1, vmax=max_model_speed)
+    fig.colorbar(im, ax=axes[0])
     # Loop over data dimensions and create text annotations.
     formattedBlockedCells = cells_overall[timestep]
     for i in range(n_rows):
