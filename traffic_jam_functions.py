@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
 from settings import *
-maxIndex = n_rows
+maxIndex = 0
 pairIndexTStart = y = {i: 0 for i in range(n_rows)} # Pair linking the index of the car and the time it appeared
 pairIndexDeltaT = [] # Pair linking the index of the car and the time it took to to travel
 pairNumberSpeed_t = [[[-1,0] for i in range(n_cols)] for j in range(n_rows)] # Pair linking the number of cars that have gone to a specific cell and the mean speed they had
@@ -243,7 +243,7 @@ def traffic_jam_rule(neighborhood, c, t):
 
             # The car can only overtake, if the second lane to the left is empty, too
             # Otherwise, a back arranging and an overtaking car could collide
-            if (speed_of_interest > gap_size or speed_of_interest == 0) and lane_left is not None and not is_blocked(row-1,col) and col != 0:
+            if (speed_of_interest > gap_size or speed_of_interest == 0) and lane_left is not None and not is_blocked(row-1,col):  # and col != 0:
                 if np.all([c[0] <= speed_of_interest for c in curr_lane[:int(index_of_current_cell)]]):
                     cells_to_overtake = lane_left[:int(index_in_correct_order + speed_of_interest +1)]
                     if np.all([c[0] == -1 for c in cells_to_overtake]):
@@ -346,7 +346,7 @@ def saveImage(ca, numbers, timestep):
         getMeanSpeedPlot(axes[1], timestep, j)
     axes[1].legend(loc='lower right', framealpha=0.5, fontsize='small')
 
-    plt.savefig(f'./resources/{timestep}.png')
+    plt.savefig(f'./resources/img_{f"{timestep:02}"}.png')
     plt.close(fig)
 
 def saveImages(ca, numbers, title=''):
