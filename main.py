@@ -21,7 +21,6 @@ cellular_automaton = tjf.evolve2d(cellular_automaton, timesteps=n_time_steps,
 values = cellular_automaton[:, :, :, 0]
 car_numbers = cellular_automaton[:, :, :, 1]
 tjf.saveImages(values, car_numbers)
-plt.show()
 
 best_pams, min_difference = tjf.parametrize_goal_time(9.5, max_model_speed)
 print(best_pams, min_difference)
